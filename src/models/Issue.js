@@ -1,74 +1,53 @@
-/**
- * Issue Model
- * Community-reported issues and improvement requests
- */
-
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const issueSchema = new mongoose.Schema(
   {
-    facility: {
+    facilityId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Facility',
-      required: [true, 'Facility is required'],
+      ref: "Facility",
+      required: true,
     },
-    reportedBy: {
+    inspectionId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Reporter is required'],
+      ref: "Inspection",
+      required: false,
     },
-    title: {
+    reporterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
+    reporterName: {
       type: String,
-      required: [true, 'Issue title is required'],
-      trim: true,
+      default: "Anonymous Citizen",
+    },
+    reporterContact: {
+      type: String,
+      default: "",
     },
     description: {
       type: String,
-      required: [true, 'Description is required'],
+      required: true,
       trim: true,
-    },
-    severity: {
-      type: String,
-      enum: ['low', 'medium', 'high', 'critical'],
-      required: [true, 'Severity is required'],
     },
     status: {
       type: String,
-      enum: ['pending', 'in_progress', 'resolved'],
-      default: 'pending',
+      enum: ["pending", "in_progress", "resolved"],
+      default: "pending",
     },
     assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-    },
-    photos: [{
-      type: String,
-    }],
-    resolutionNotes: {
-      type: String,
-      trim: true,
+      type: mongoose.Schema.Types.Mixed,
     },
     resolvedAt: {
       type: Date,
       default: null,
     },
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
+  { timestamps: true }
 );
 
-// Populate references
-issueSchema.pre(/^find/, function (next) {
-  this.populate('facility', 'name type village').populate('reportedBy', 'name email').populate('assignedTo', 'name email');
-  next();
-});
-
-// Indexes
-issueSchema.index({ status: 1 });
-issueSchema.index({ assignedTo: 1 });
-
-module.exports = mongoose.model('Issue', issueSchema);
+module.exports = mongoose.model("Issue", issueSchema);

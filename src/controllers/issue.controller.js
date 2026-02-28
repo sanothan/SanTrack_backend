@@ -1,266 +1,136 @@
-/**
- * Issue Controller
- * Handles HTTP requests for issue management
- */
+const Issue = require("../models/Issue");
+const Facility = require("../models/Facility");
+const Inspection = require("../models/Inspection");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const { isValidObjectId } = require("../utils/objectId");
 
-const Issue = require('../models/Issue');
-const Facility = require('../models/Facility');
-const { validationResult } = require('express-validator');
+const createIssue = asyncHandler(async (req, res) => {
+  const { facilityId, inspectionId, description } = req.body;
 
-/**
- * @route   POST /api/issues
- * @desc    Create issue (Inspector/Community Leader)
- * @access  Private/Inspector/Community Leader
- */
-const createIssue = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
+  const facility = await Facility.findById(facilityId);
+  if (!facility) throw new ApiError(404, "Facility not found");
 
-    const { facility, title, description, severity, photos } = req.body;
-
-    // Validate facility exists
-    const facilityExists = await Facility.findById(facility);
-    if (!facilityExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'Facility not found',
-      });
-    }
-
-    const issue = await Issue.create({
-      facility,
-      reportedBy: req.user.id,
-      title,
-      description,
-      severity,
-      photos: photos || [],
-    });
-
-    const populatedIssue = await Issue.findById(issue._id)
-      .populate('facility', 'name type village')
-      .populate('reportedBy', 'name email')
-      .populate('assignedTo', 'name email');
-
-    res.status(201).json({
-      success: true,
-      data: populatedIssue,
-    });
-  } catch (error) {
-    next(error);
+  if (inspectionId) {
+    const inspection = await Inspection.findById(inspectionId);
+    if (!inspection) throw new ApiError(404, "Inspection not found");
   }
-};
 
-/**
- * @route   GET /api/issues
- * @desc    Get all issues with filtering
- * @access  Private
- */
-const getIssues = async (req, res, next) => {
-  try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const skip = (page - 1) * limit;
+  const issueData = {
+    facilityId,
+    inspectionId,
+    description,
+    status: "pending",
+  };
 
-    // Build filter
-    const filter = {};
-    if (req.query.status) filter.status = req.query.status;
-    if (req.query.facility) filter.facility = req.query.facility;
-    if (req.query.assignedTo) filter.assignedTo = req.query.assignedTo;
-    if (req.query.severity) filter.severity = req.query.severity;
-
-    const issues = await Issue.find(filter)
-      .populate('facility', 'name type village')
-      .populate('reportedBy', 'name email')
-      .populate('assignedTo', 'name email')
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
-
-    const total = await Issue.countDocuments(filter);
-
-    res.status(200).json({
-      success: true,
-      data: issues,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    next(error);
+  // If reported by a user (staff or community)
+  if (req.user) {
+    if (req.user.role === 'community') {
+      issueData.reporterId = req.user.id;
+      issueData.isPublic = true;
+    } else {
+      // If inspector/admin, we still track reporterId for audit
+      issueData.reporterId = req.user.id;
+    }
   }
-};
 
-/**
- * @route   GET /api/issues/:id
- * @desc    Get issue by ID
- * @access  Private
- */
-const getIssueById = async (req, res, next) => {
-  try {
-    const issue = await Issue.findById(req.params.id)
-      .populate('facility', 'name type village')
-      .populate('reportedBy', 'name email')
-      .populate('assignedTo', 'name email');
+  const issue = await Issue.create(issueData);
 
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        message: 'Issue not found',
-      });
-    }
+  res.status(201).json(issue);
+});
 
-    res.status(200).json({
-      success: true,
-      data: issue,
-    });
-  } catch (error) {
-    next(error);
+const createPublicIssue = asyncHandler(async (req, res) => {
+  const { facilityId, description, reporterName, reporterContact } = req.body;
+
+  const facility = await Facility.findById(facilityId);
+  if (!facility) throw new ApiError(404, "Facility not found");
+
+  const issue = await Issue.create({
+    facilityId,
+    description,
+    reporterName: reporterName || "Anonymous Citizen",
+    reporterContact: reporterContact || "",
+    isPublic: true,
+    status: "pending",
+  });
+
+  res.status(201).json(issue);
+});
+
+const getIssues = asyncHandler(async (req, res) => {
+  const filter = {};
+  if (req.query.status) filter.status = req.query.status;
+
+  // Citizens only see their own reports
+  if (req.user.role === "community") {
+    filter.reporterId = req.user.id;
   }
-};
 
-/**
- * @route   PUT /api/issues/:id
- * @desc    Update issue (Admin/Inspector)
- * @access  Private/Admin/Inspector
- */
-const updateIssue = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
+  const issues = await Issue.find(filter)
+    .populate("facilityId", "name type condition")
+    .populate("inspectionId", "score status date")
+    .sort({ createdAt: -1 });
 
-    // Check if issue exists
-    let issue = await Issue.findById(req.params.id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        message: 'Issue not found',
-      });
-    }
+  res.status(200).json(issues);
+});
 
-    const { status, assignedTo, severity, title, description } = req.body;
+const getIssueById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
 
-    // Update fields
-    const updateData = {};
-    if (status !== undefined) updateData.status = status;
-    if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
-    if (severity !== undefined) updateData.severity = severity;
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
+  const issue = await Issue.findById(id)
+    .populate("facilityId", "name type condition")
+    .populate("inspectionId", "score status date");
 
-    // If status is being set to resolved, set resolvedAt
-    if (status === 'resolved' && issue.status !== 'resolved') {
-      updateData.resolvedAt = new Date();
-    }
+  if (!issue) throw new ApiError(404, "Issue not found");
+  res.status(200).json(issue);
+});
 
-    issue = await Issue.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('facility', 'name type village')
-     .populate('reportedBy', 'name email')
-     .populate('assignedTo', 'name email');
+const updateIssue = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
 
-    res.status(200).json({
-      success: true,
-      data: issue,
-    });
-  } catch (error) {
-    next(error);
+  if (req.body.facilityId) {
+    const facility = await Facility.findById(req.body.facilityId);
+    if (!facility) throw new ApiError(404, "Facility not found");
   }
-};
 
-/**
- * @route   DELETE /api/issues/:id
- * @desc    Delete issue (Admin only)
- * @access  Private/Admin
- */
-const deleteIssue = async (req, res, next) => {
-  try {
-    const issue = await Issue.findById(req.params.id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        message: 'Issue not found',
-      });
-    }
-
-    await Issue.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Issue deleted successfully',
-    });
-  } catch (error) {
-    next(error);
+  if (req.body.inspectionId) {
+    const inspection = await Inspection.findById(req.body.inspectionId);
+    if (!inspection) throw new ApiError(404, "Inspection not found");
   }
-};
 
-/**
- * @route   PATCH /api/issues/:id/resolve
- * @desc    Resolve issue
- * @access  Private/Admin/Inspector
- */
-const resolveIssue = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
+  const issue = await Issue.findById(id);
+  if (!issue) throw new ApiError(404, "Issue not found");
 
-    const { resolutionNotes } = req.body;
+  Object.assign(issue, req.body);
 
-    // Check if issue exists
-    let issue = await Issue.findById(req.params.id);
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        message: 'Issue not found',
-      });
-    }
-
-    issue = await Issue.findByIdAndUpdate(
-      req.params.id,
-      {
-        status: 'resolved',
-        resolutionNotes,
-        resolvedAt: new Date(),
-      },
-      { new: true, runValidators: true }
-    ).populate('facility', 'name type village')
-     .populate('reportedBy', 'name email')
-     .populate('assignedTo', 'name email');
-
-    res.status(200).json({
-      success: true,
-      data: issue,
-    });
-  } catch (error) {
-    next(error);
+  if (issue.status === "resolved" && !issue.resolvedAt) {
+    issue.resolvedAt = new Date();
   }
-};
+  if (issue.status !== "resolved") {
+    issue.resolvedAt = null;
+  }
+
+  await issue.save();
+  res.status(200).json(issue);
+});
+
+const deleteIssue = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
+
+  const issue = await Issue.findByIdAndDelete(id);
+  if (!issue) throw new ApiError(404, "Issue not found");
+
+  res.status(200).json({ message: "Issue deleted successfully" });
+});
 
 module.exports = {
   createIssue,
+  createPublicIssue,
   getIssues,
   getIssueById,
   updateIssue,
   deleteIssue,
-  resolveIssue,
 };

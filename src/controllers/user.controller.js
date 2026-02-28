@@ -1,290 +1,90 @@
-/**
- * User Controller
- * Handles HTTP requests for user management
- */
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const { isValidObjectId } = require("../utils/objectId");
+const { generateToken } = require("../services/token.service");
 
-const User = require('../models/User');
-const { validationResult } = require('express-validator');
+const createUser = asyncHandler(async (req, res) => {
+  const { name, email, password, phone, role } = req.body;
 
-/**
- * @route   POST /api/users
- * @desc    Register user (Admin only)
- * @access  Private/Admin
- */
-const registerUser = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
-
-    const { name, email, password, role, village, phone } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists with this email',
-      });
-    }
-
-    const user = await User.create({
-      name,
-      email,
-      password,
-      role,
-      village,
-      phone,
-    });
-
-    // Generate token
-    const token = user.generateToken();
-
-    res.status(201).json({
-      success: true,
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        village: user.village,
-        phone: user.phone,
-        isActive: user.isActive,
-        token,
-      },
-    });
-  } catch (error) {
-    next(error);
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (existingUser) {
+    throw new ApiError(400, "Email already in use");
   }
-};
 
-/**
- * @route   GET /api/users
- * @desc    Get all users with pagination and filtering
- * @access  Private/Admin
- */
-const getUsers = async (req, res, next) => {
-  try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const skip = (page - 1) * limit;
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Build filter
-    const filter = {};
-    if (req.query.role) filter.role = req.query.role;
-    if (req.query.village) filter.village = req.query.village;
-    if (req.query.isActive !== undefined) filter.isActive = req.query.isActive === 'true';
+  const user = await User.create({
+    name,
+    email: email.toLowerCase(),
+    password: hashedPassword,
+    role: role || "community",
+    phone,
+  });
 
-    const users = await User.find(filter)
-      .populate('village', 'name district state')
-      .select('-password')
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
+  res.status(201).json({
+    message: "User created successfully",
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+    },
+  });
+});
 
-    const total = await User.countDocuments(filter);
+const getUsers = asyncHandler(async (_req, res) => {
+  const users = await User.find().select("-password").sort({ createdAt: -1 });
+  res.status(200).json(users);
+});
 
-    res.status(200).json({
-      success: true,
-      data: users,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    next(error);
+const getUserById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid user id");
+
+  const user = await User.findById(id).select("-password");
+  if (!user) throw new ApiError(404, "User not found");
+
+  res.status(200).json(user);
+});
+
+const updateUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid user id");
+
+  const updates = { ...req.body };
+  if (updates.password) {
+    updates.password = await bcrypt.hash(updates.password, 10);
   }
-};
-
-/**
- * @route   GET /api/users/:id
- * @desc    Get user by ID
- * @access  Private/Admin/Inspector
- */
-const getUserById = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.params.id)
-      .populate('village', 'name district state')
-      .select('-password');
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    next(error);
+  if (updates.email) {
+    updates.email = updates.email.toLowerCase();
   }
-};
 
-/**
- * @route   PUT /api/users/:id
- * @desc    Update user
- * @access  Private/Admin
- */
-const updateUser = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
+  const user = await User.findByIdAndUpdate(id, updates, {
+    new: true,
+    runValidators: true,
+  }).select("-password");
 
-    const { name, email, password, role, village, phone, isActive } = req.body;
+  if (!user) throw new ApiError(404, "User not found");
+  res.status(200).json(user);
+});
 
-    // Check if user exists
-    let user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
+const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid user id");
 
-    // Check if email is being changed and if it already exists
-    if (email && email !== user.email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email already exists',
-        });
-      }
-    }
+  const user = await User.findByIdAndDelete(id);
+  if (!user) throw new ApiError(404, "User not found");
 
-    // Update fields
-    const updateData = {};
-    if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
-    if (password) updateData.password = password; // Will be hashed by pre-save hook
-    if (role !== undefined) updateData.role = role;
-    if (village !== undefined) updateData.village = village;
-    if (phone !== undefined) updateData.phone = phone;
-    if (isActive !== undefined) updateData.isActive = isActive;
-
-    user = await User.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('village', 'name district state').select('-password');
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * @route   DELETE /api/users/:id
- * @desc    Delete user
- * @access  Private/Admin
- */
-const deleteUser = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    // Check if user has related records
-    // This would need to be implemented based on your business logic
-    // For now, we'll allow deletion
-
-    await User.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: 'User deleted successfully',
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * @route   GET /api/users/profile/me
- * @desc    Get current user profile
- * @access  Private
- */
-const getProfile = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user.id)
-      .populate('village', 'name district state')
-      .select('-password');
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * @route   PUT /api/users/profile/me
- * @desc    Update current user profile
- * @access  Private
- */
-const updateProfile = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
-
-    const { name, phone, avatar } = req.body;
-
-    const updateData = {};
-    if (name !== undefined) updateData.name = name;
-    if (phone !== undefined) updateData.phone = phone;
-    if (avatar !== undefined) updateData.avatar = avatar;
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('village', 'name district state').select('-password');
-
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+  res.status(200).json({ message: "User deleted successfully" });
+});
 
 module.exports = {
-  registerUser,
+  createUser,
   getUsers,
   getUserById,
   updateUser,
   deleteUser,
-  getProfile,
-  updateProfile,
 };
