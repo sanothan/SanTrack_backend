@@ -1,23 +1,23 @@
-/**
- * Server Entry Point
- * Rural Sanitation Inspection and Improvement System
- */
+require("dotenv").config();
+const app = require("./app");
+const connectDB = require("./config/db");
 
-require('dotenv').config();
-const app = require('./app');
-const connectDB = require('./config/db');
+const port = process.env.PORT || 5000;
 
-const PORT = process.env.PORT || 5000;
+const startServer = async () => {
+  try {
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is required");
+    }
 
-// Connect to MongoDB then start server
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`API Docs: http://localhost:${PORT}/api-docs`);
+    await connectDB();
+    app.listen(port, () => {
+      console.log(`SanTrack server running on http://localhost:${port}`);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to start server:', err);
+  } catch (error) {
+    console.error("Failed to start server:", error.message);
     process.exit(1);
-  });
+  }
+};
+
+startServer();

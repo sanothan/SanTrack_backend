@@ -1,83 +1,42 @@
-/**
- * Inspection Model
- * Sanitation inspection records by inspectors
- */
-
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const inspectionSchema = new mongoose.Schema(
   {
-    facility: {
+    facilityId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Facility',
-      required: [true, 'Facility is required'],
+      ref: "Facility",
+      required: true,
     },
-    inspector: {
+    inspectorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Inspector is required'],
-    },
-    date: {
-      type: Date,
-      required: [true, 'Inspection date is required'],
-      default: Date.now,
+      ref: "User",
+      required: true,
     },
     score: {
       type: Number,
       min: 1,
       max: 10,
-      required: [true, 'Score is required'],
+      required: true,
+    },
+    remarks: {
+      type: String,
+      trim: true,
+    },
+    images: {
+      type: [String],
+      default: [],
     },
     status: {
       type: String,
-      enum: ['good', 'needs_attention', 'critical'],
-      required: [true, 'Status is required'],
+      enum: ["good", "needs_attention", "critical"],
+      required: true,
     },
-    photos: [{
-      type: String, // URLs to uploaded photos
-    }],
-    notes: {
-      type: String,
-      trim: true,
-    },
-    recommendations: {
-      type: String,
-      trim: true,
-    },
-    nextInspectionDue: {
+    date: {
       type: Date,
-      required: [true, 'Next inspection date is required'],
+      default: Date.now,
     },
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
+  { timestamps: true }
 );
 
-// Populate references by default
-inspectionSchema.pre(/^find/, function (next) {
-  this.populate('facility', 'name type condition').populate('inspector', 'name email');
-  next();
-});
-
-// Calculate score based on various factors
-inspectionSchema.methods.calculateScore = function() {
-  // This is a placeholder for score calculation logic
-  // In a real implementation, this would consider various factors
-  return this.score;
-};
-
-// Determine status based on score
-inspectionSchema.methods.determineStatus = function() {
-  if (this.score >= 8) return 'good';
-  if (this.score >= 5) return 'needs_attention';
-  return 'critical';
-};
-
-// Indexes
-inspectionSchema.index({ facility: 1, date: 1 });
-inspectionSchema.index({ inspector: 1 });
-
-module.exports = mongoose.model('Inspection', inspectionSchema);
+module.exports = mongoose.model("Inspection", inspectionSchema);
