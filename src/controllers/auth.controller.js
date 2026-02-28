@@ -1,187 +1,67 @@
-/**
- * Auth Controller
- * Handles HTTP requests for authentication
- */
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const { generateToken } = require("../services/token.service");
 
-const User = require('../models/User');
-const { validationResult } = require('express-validator');
+const register = asyncHandler(async (req, res) => {
+  const { name, email, password, phone } = req.body;
 
-/**
- * @route   POST /api/auth/login
- * @desc    Login user
- * @access  Public
- */
-const login = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
-
-    const { email, password } = req.body;
-
-    // Find user and include password
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-      });
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated',
-      });
-    }
-
-    // Check password
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-      });
-    }
-
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-
-    // Generate token
-    const token = user.generateToken();
-
-    res.status(200).json({
-      success: true,
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        village: user.village,
-        phone: user.phone,
-        avatar: user.avatar,
-        isActive: user.isActive,
-        lastLogin: user.lastLogin,
-        token,
-      },
-    });
-  } catch (error) {
-    next(error);
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (existingUser) {
+    throw new ApiError(400, "Email already in use");
   }
-};
 
-/**
- * @route   POST /api/auth/register
- * @desc    Public registration for new users
- * @access  Public
- */
-const register = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array(),
-      });
-    }
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    const { name, email, password, role = 'community_leader', village, phone } = req.body;
+  const user = await User.create({
+    name,
+    email: email.toLowerCase(),
+    password: hashedPassword,
+    role: "community",
+    phone,
+  });
 
-    const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists with this email',
-      });
-    }
+  res.status(201).json({
+    message: "User registered successfully",
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+    },
+  });
+});
 
-    const user = await User.create({
-      name,
-      email,
-      password,
-      role,
-      village,
-      phone,
-    });
+const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    const token = user.generateToken();
-
-    res.status(201).json({
-      success: true,
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        village: user.village,
-        phone: user.phone,
-        isActive: user.isActive,
-        lastLogin: user.lastLogin,
-        token,
-      },
-    });
-  } catch (error) {
-    next(error);
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
+    throw new ApiError(401, "Invalid credentials");
   }
-};
 
-/**
- * @route   POST /api/auth/forgot-password
- * @desc    Forgot password
- * @access  Public
- */
-const forgotPassword = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    // In a real implementation, you would send an email with reset token
-    // For now, just return a success message
-    res.status(200).json({
-      success: true,
-      message: 'Password reset email sent',
-    });
-  } catch (error) {
-    next(error);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Invalid credentials");
   }
-};
 
-/**
- * @route   POST /api/auth/reset-password
- * @desc    Reset password
- * @access  Public
- */
-const resetPassword = async (req, res, next) => {
-  try {
-    const { token, password } = req.body;
+  const token = generateToken(user);
 
-    // In a real implementation, you would verify the reset token
-    // For now, just return a success message
-    res.status(200).json({
-      success: true,
-      message: 'Password reset successful',
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+  res.status(200).json({
+    message: "Login successful",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  });
+});
 
 module.exports = {
-  login,
   register,
-  forgotPassword,
-  resetPassword,
+  login,
 };
