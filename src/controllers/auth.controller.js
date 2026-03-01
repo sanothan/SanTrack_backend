@@ -61,7 +61,56 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+const updateProfile = asyncHandler(async (req, res) => {
+  const { name, phone, address, bio, currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user.id);
+  if (!user) throw new ApiError(404, "User not found");
+
+  if (name) user.name = name;
+  if (phone !== undefined) user.phone = phone;
+  if (address !== undefined) user.address = address;
+  if (bio !== undefined) user.bio = bio;
+
+  if (newPassword) {
+    if (!currentPassword) throw new ApiError(400, "Current password is required to set a new password");
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) throw new ApiError(401, "Current password is incorrect");
+    user.password = await bcrypt.hash(newPassword, 10);
+  }
+
+  await user.save();
+
+  const updatedUser = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+    address: user.address,
+    bio: user.bio,
+  };
+
+  res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
+});
+
+const deleteAccount = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  if (!password) throw new ApiError(400, "Password is required to delete your account");
+
+  const user = await User.findById(req.user.id);
+  if (!user) throw new ApiError(404, "User not found");
+
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) throw new ApiError(401, "Incorrect password");
+
+  await User.findByIdAndDelete(req.user.id);
+  res.status(200).json({ message: "Account deleted successfully" });
+});
+
 module.exports = {
   register,
   login,
+  updateProfile,
+  deleteAccount,
 };
