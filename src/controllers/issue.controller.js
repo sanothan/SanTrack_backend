@@ -126,6 +126,15 @@ const deleteIssue = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Issue deleted successfully" });
 });
 
+const deleteAllIssue = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
+
+  const issue = await Issue.findByIdAndDelete(id);
+  if (!issue) throw new ApiError(404, "Issue not found");
+
+  res.status(200).json({ message: "Issue deleted successfully" });
+});
 module.exports = {
   createIssue,
   createPublicIssue,
@@ -133,4 +142,5 @@ module.exports = {
   getIssueById,
   updateIssue,
   deleteIssue,
+  deleteAllIssue,
 };
