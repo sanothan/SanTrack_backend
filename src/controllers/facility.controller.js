@@ -30,9 +30,19 @@ const getFacilities = asyncHandler(async (req, res) => {
   res.status(200).json(facilities);
 });
 
-const getPublicFacilities = asyncHandler(async (_req, res) => {
+const getPublicFacilities = asyncHandler(async (req, res) => {
   // Only return necessary fields to the public, no internal IDs or deep populates beyond name
-  const facilities = await Facility.find()
+  const filter = {};
+  const { villageId } = req.query;
+
+  if (villageId) {
+    if (!isValidObjectId(villageId)) {
+      throw new ApiError(400, "Invalid villageId filter");
+    }
+    filter.villageId = villageId;
+  }
+
+  const facilities = await Facility.find(filter)
     .select("name type condition villageId")
     .sort({ name: 1 });
   res.status(200).json(facilities);
