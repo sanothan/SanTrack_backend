@@ -3,6 +3,7 @@ const User = require("../models/User");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const { generateToken } = require("../services/token.service");
+const { verifyGoogleToken } = require("../services/googleAuth.service");
 
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, phone } = req.body;
@@ -108,9 +109,44 @@ const deleteAccount = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Account deleted successfully" });
 });
 
+const googleLogin = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+
+  // Verify the Google ID token server-side — never trust raw frontend data
+  const { googleId, email, name, picture } = await verifyGoogleToken(credential);
+
+  // Find existing user by email
+  let user = await User.findOne({ email: email.toLowerCase() });
+
+  if (!user) {
+    // Auto-register new Google users with default role
+    user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      provider: "google",
+      googleId,
+      role: "community",
+    });
+  }
+
+  const token = generateToken(user);
+
+  res.status(200).json({
+    message: "Login successful",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  });
+});
+
 module.exports = {
   register,
   login,
   updateProfile,
   deleteAccount,
+  googleLogin,
 };
