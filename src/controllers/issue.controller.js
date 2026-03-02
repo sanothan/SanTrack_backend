@@ -4,38 +4,10 @@ const Inspection = require("../models/Inspection");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const { isValidObjectId } = require("../utils/objectId");
+const issueService = require("../services/issue.service");
 
 const createIssue = asyncHandler(async (req, res) => {
-  const { facilityId, inspectionId, description } = req.body;
-
-  const facility = await Facility.findById(facilityId);
-  if (!facility) throw new ApiError(404, "Facility not found");
-
-  if (inspectionId) {
-    const inspection = await Inspection.findById(inspectionId);
-    if (!inspection) throw new ApiError(404, "Inspection not found");
-  }
-
-  const issueData = {
-    facilityId,
-    inspectionId,
-    description,
-    status: "pending",
-  };
-
-  // If reported by a user (staff or community)
-  if (req.user) {
-    if (req.user.role === 'community') {
-      issueData.reporterId = req.user.id;
-      issueData.isPublic = true;
-    } else {
-      // If inspector/admin, we still track reporterId for audit
-      issueData.reporterId = req.user.id;
-    }
-  }
-
-  const issue = await Issue.create(issueData);
-
+  const issue = await issueService.createIssue(req.body, req.user);
   res.status(201).json(issue);
 });
 
@@ -90,29 +62,7 @@ const updateIssue = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
 
-  if (req.body.facilityId) {
-    const facility = await Facility.findById(req.body.facilityId);
-    if (!facility) throw new ApiError(404, "Facility not found");
-  }
-
-  if (req.body.inspectionId) {
-    const inspection = await Inspection.findById(req.body.inspectionId);
-    if (!inspection) throw new ApiError(404, "Inspection not found");
-  }
-
-  const issue = await Issue.findById(id);
-  if (!issue) throw new ApiError(404, "Issue not found");
-
-  Object.assign(issue, req.body);
-
-  if (issue.status === "resolved" && !issue.resolvedAt) {
-    issue.resolvedAt = new Date();
-  }
-  if (issue.status !== "resolved") {
-    issue.resolvedAt = null;
-  }
-
-  await issue.save();
+  const issue = await issueService.updateIssueStatus(id, req.body, req.user);
   res.status(200).json(issue);
 });
 

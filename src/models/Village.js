@@ -4,11 +4,12 @@ const villageSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     district: { type: String, required: true, trim: true },
+    state: { type: String, trim: true },
     gps: {
       lat: { type: Number, required: true },
       lng: { type: Number, required: true },
     },
-    population: { type: Number, required: true, min: 0 },
+    population: { type: Number, min: 0, default: 0 },
   },
   { timestamps: true }
 );
