@@ -1,9 +1,18 @@
 const Village = require("../models/Village");
+const villageService = require("../services/village.service");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const { isValidObjectId } = require("../utils/objectId");
 
 const createVillage = asyncHandler(async (req, res) => {
+  const { gps } = req.body;
+  if (
+    !gps ||
+    gps.lat === undefined || gps.lat === null || isNaN(Number(gps.lat)) ||
+    gps.lng === undefined || gps.lng === null || isNaN(Number(gps.lng))
+  ) {
+    throw new ApiError(400, 'GPS coordinates (lat and lng) are required');
+  }
   const village = await Village.create(req.body);
   res.status(201).json(village);
 });
@@ -25,7 +34,7 @@ const getVillages = asyncHandler(async (_req, res) => {
     },
     {
       $project: {
-        facilities: 0, // Exclude the raw facilities array from the response
+        facilities: 0,
       },
     },
     { $sort: { createdAt: -1 } },
@@ -67,10 +76,26 @@ const deleteVillage = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Village deleted successfully" });
 });
 
+const reverseGeocode = asyncHandler(async (req, res) => {
+  const { lat, lng } = req.query;
+
+  if (!lat || !lng) {
+    throw new ApiError(400, "Latitude (lat) and Longitude (lng) are required");
+  }
+
+  const addressData = await villageService.reverseGeocode(
+    parseFloat(lat),
+    parseFloat(lng)
+  );
+
+  res.status(200).json(addressData);
+});
+
 module.exports = {
   createVillage,
   getVillages,
   getVillageById,
   updateVillage,
   deleteVillage,
+  reverseGeocode,
 };
