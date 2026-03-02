@@ -4,6 +4,14 @@ const ApiError = require("../utils/ApiError");
 const { isValidObjectId } = require("../utils/objectId");
 
 const createVillage = asyncHandler(async (req, res) => {
+  const { gps } = req.body;
+  if (
+    !gps ||
+    gps.lat === undefined || gps.lat === null || isNaN(Number(gps.lat)) ||
+    gps.lng === undefined || gps.lng === null || isNaN(Number(gps.lng))
+  ) {
+    throw new ApiError(400, 'GPS coordinates (lat and lng) are required');
+  }
   const village = await Village.create(req.body);
   res.status(201).json(village);
 });
