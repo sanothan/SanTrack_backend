@@ -117,6 +117,7 @@ const googleLogin = asyncHandler(async (req, res) => {
 
   // Find existing user by email
   let user = await User.findOne({ email: email.toLowerCase() });
+  let isNewUser = false;
 
   if (!user) {
     // Auto-register new Google users with default role
@@ -127,13 +128,15 @@ const googleLogin = asyncHandler(async (req, res) => {
       googleId,
       role: "community",
     });
+    isNewUser = true;
   }
 
   const token = generateToken(user);
 
   res.status(200).json({
-    message: "Login successful",
+    message: isNewUser ? "Account created successfully" : "Login successful",
     token,
+    isNewUser,
     user: {
       id: user._id,
       name: user.name,
