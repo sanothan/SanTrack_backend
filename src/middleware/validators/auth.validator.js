@@ -19,7 +19,12 @@ const loginValidation = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
+const googleLoginValidation = [
+  body("credential").notEmpty().withMessage("Google credential token is required"),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
+  googleLoginValidation,
 };
