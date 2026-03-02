@@ -4,6 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const { isValidObjectId } = require("../utils/objectId");
 
+//
 const createFacility = asyncHandler(async (req, res) => {
   const village = await Village.findById(req.body.villageId);
   if (!village) throw new ApiError(404, "Village not found");
@@ -31,7 +32,6 @@ const getFacilities = asyncHandler(async (req, res) => {
 });
 
 const getPublicFacilities = asyncHandler(async (req, res) => {
-  // Only return necessary fields to the public, no internal IDs or deep populates beyond name
   const filter = {};
   const { villageId } = req.query;
 

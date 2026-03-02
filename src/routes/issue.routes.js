@@ -18,14 +18,6 @@ const {
 
 const router = express.Router();
 
-// Note: Public route deprecated in favor of authenticated reporter route
-// router.post(
-//   "/public",
-//   createIssueValidation,
-//   validateRequest,
-//   createPublicIssue
-// );
-
 router.use(verifyToken);
 
 router.post(
@@ -37,7 +29,7 @@ router.post(
 );
 router.get(
   "/",
-  authorizeRoles("admin", "inspector", "community"),
+  authorizeRoles("admin", "inspector"),
   issueQueryValidation,
   validateRequest,
   getIssues

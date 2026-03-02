@@ -16,8 +16,17 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
       minlength: 6,
+    },
+    provider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: {
+      type: String,
+      sparse: true,
     },
     role: {
       type: String,
@@ -25,6 +34,14 @@ const userSchema = new mongoose.Schema(
       default: "community",
     },
     phone: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      type: String,
+      trim: true,
+    },
+    bio: {
       type: String,
       trim: true,
     },
