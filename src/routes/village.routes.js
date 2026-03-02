@@ -5,6 +5,7 @@ const {
   getVillageById,
   updateVillage,
   deleteVillage,
+  reverseGeocode,
 } = require("../controllers/village.controller");
 const verifyToken = require("../middleware/verifyToken");
 const authorizeRoles = require("../middleware/authorizeRoles");
@@ -17,6 +18,8 @@ const {
 const router = express.Router();
 
 router.use(verifyToken);
+
+router.get("/reverse-geocode", authorizeRoles("admin"), reverseGeocode);
 
 router.post(
   "/",

@@ -1,4 +1,5 @@
 const Village = require("../models/Village");
+const villageService = require("../services/village.service");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const { isValidObjectId } = require("../utils/objectId");
@@ -33,7 +34,7 @@ const getVillages = asyncHandler(async (_req, res) => {
     },
     {
       $project: {
-        facilities: 0, // Exclude the raw facilities array from the response
+        facilities: 0,
       },
     },
     { $sort: { createdAt: -1 } },
@@ -75,10 +76,26 @@ const deleteVillage = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Village deleted successfully" });
 });
 
+const reverseGeocode = asyncHandler(async (req, res) => {
+  const { lat, lng } = req.query;
+
+  if (!lat || !lng) {
+    throw new ApiError(400, "Latitude (lat) and Longitude (lng) are required");
+  }
+
+  const addressData = await villageService.reverseGeocode(
+    parseFloat(lat),
+    parseFloat(lng)
+  );
+
+  res.status(200).json(addressData);
+});
+
 module.exports = {
   createVillage,
   getVillages,
   getVillageById,
   updateVillage,
   deleteVillage,
+  reverseGeocode,
 };
