@@ -29,7 +29,7 @@ router.post(
 );
 router.get(
   "/",
-  authorizeRoles("admin", "inspector", "community"),
+  authorizeRoles("admin", "inspector"),
   issueQueryValidation,
   validateRequest,
   getIssues
