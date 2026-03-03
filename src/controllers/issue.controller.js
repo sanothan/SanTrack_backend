@@ -6,6 +6,7 @@ const ApiError = require("../utils/ApiError");
 const { isValidObjectId } = require("../utils/objectId");
 const issueService = require("../services/issue.service");
 
+//creating an issue by community member
 const createIssue = asyncHandler(async (req, res) => {
   const issue = await issueService.createIssue(req.body, req.user);
   res.status(201).json(issue);
@@ -29,11 +30,11 @@ const createPublicIssue = asyncHandler(async (req, res) => {
   res.status(201).json(issue);
 });
 
+//getting all issues in dashboard
 const getIssues = asyncHandler(async (req, res) => {
   const filter = {};
   if (req.query.status) filter.status = req.query.status;
 
-  // Citizens only see their own reports
   if (req.user.role === "community") {
     filter.reporterId = req.user.id;
   }
@@ -58,6 +59,7 @@ const getIssueById = asyncHandler(async (req, res) => {
   res.status(200).json(issue);
 });
 
+//update
 const updateIssue = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
@@ -66,6 +68,7 @@ const updateIssue = asyncHandler(async (req, res) => {
   res.status(200).json(issue);
 });
 
+//delete
 const deleteIssue = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
