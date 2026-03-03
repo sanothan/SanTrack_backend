@@ -33,11 +33,11 @@ router.get(
 );
 router.put(
   "/:id",
-  authorizeRoles("inspector"),
+  authorizeRoles("admin", "inspector"),
   updateInspectionValidation,
   validateRequest,
   updateInspection
 );
-router.delete("/:id", authorizeRoles("admin"), deleteInspection);
+router.delete("/:id", authorizeRoles("admin", "inspector"), deleteInspection);
 
 module.exports = router;

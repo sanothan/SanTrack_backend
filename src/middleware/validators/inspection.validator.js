@@ -7,7 +7,8 @@ const createInspectionValidation = [
     .withMessage("Score must be between 1 and 10"),
   body("remarks").optional().isString().withMessage("Remarks must be a string"),
   body("images").optional().isArray().withMessage("Images must be an array"),
-  body("images.*").optional().isString().withMessage("Each image must be a string"),
+  body("images.*.url").optional().isURL().withMessage("Each image must have a valid url"),
+  body("images.*.publicId").optional().isString().withMessage("Each image must have a publicId"),
   body("date").optional().isISO8601().withMessage("Date must be valid"),
 ];
 
@@ -16,7 +17,8 @@ const updateInspectionValidation = [
   body("score").optional().isInt({ min: 1, max: 10 }),
   body("remarks").optional().isString(),
   body("images").optional().isArray(),
-  body("images.*").optional().isString(),
+  body("images.*.url").optional().isURL(),
+  body("images.*.publicId").optional().isString(),
   body("date").optional().isISO8601(),
 ];
 

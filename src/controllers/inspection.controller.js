@@ -25,7 +25,11 @@ const createInspection = asyncHandler(async (req, res) => {
   facility.lastInspection = inspection.date;
   await facility.save();
 
-  res.status(201).json(inspection);
+  const populatedInspection = await Inspection.findById(inspection._id)
+    .populate("facilityId", "name type condition")
+    .populate("inspectorId", "name email role");
+
+  res.status(201).json(populatedInspection);
 });
 
 const getInspections = asyncHandler(async (_req, res) => {
@@ -56,7 +60,8 @@ const updateInspection = asyncHandler(async (req, res) => {
   const inspection = await Inspection.findById(id);
   if (!inspection) throw new ApiError(404, "Inspection not found");
 
-  if (inspection.inspectorId.toString() !== req.user.id) {
+  const isAdmin = req.user.role === "admin";
+  if (!isAdmin && inspection.inspectorId.toString() !== req.user.id) {
     throw new ApiError(403, "You can only update your own inspections");
   }
 
@@ -76,15 +81,27 @@ const updateInspection = asyncHandler(async (req, res) => {
   if (req.body.date !== undefined) inspection.date = req.body.date;
 
   await inspection.save();
-  res.status(200).json(inspection);
+
+  const populatedInspection = await Inspection.findById(id)
+    .populate("facilityId", "name type condition")
+    .populate("inspectorId", "name email role");
+
+  res.status(200).json(populatedInspection);
 });
 
 const deleteInspection = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!isValidObjectId(id)) throw new ApiError(400, "Invalid inspection id");
 
-  const inspection = await Inspection.findByIdAndDelete(id);
+  const inspection = await Inspection.findById(id);
   if (!inspection) throw new ApiError(404, "Inspection not found");
+
+  const isAdmin = req.user.role === "admin";
+  if (!isAdmin && inspection.inspectorId.toString() !== req.user.id) {
+    throw new ApiError(403, "You can only delete your own inspections");
+  }
+
+  await Inspection.findByIdAndDelete(id);
 
   res.status(200).json({ message: "Inspection deleted successfully" });
 });

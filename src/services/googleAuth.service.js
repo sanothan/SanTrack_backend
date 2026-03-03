@@ -5,7 +5,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
  * Verifies a Google ID token and returns the decoded payload.
- * @param {string} idToken - The credential token received from Google Identity Services
+ * @param {string} idToken 
  * @returns {{ googleId, email, name, picture }}
  */
 const verifyGoogleToken = async (idToken) => {
