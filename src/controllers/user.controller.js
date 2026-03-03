@@ -5,6 +5,8 @@ const ApiError = require("../utils/ApiError");
 const { isValidObjectId } = require("../utils/objectId");
 const { generateToken } = require("../services/token.service");
 
+
+//Create a new user
 const createUser = asyncHandler(async (req, res) => {
   const { name, email, password, phone, role } = req.body;
 

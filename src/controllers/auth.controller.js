@@ -5,6 +5,7 @@ const ApiError = require("../utils/ApiError");
 const { generateToken } = require("../services/token.service");
 const { verifyGoogleToken } = require("../services/googleAuth.service");
 
+// Register a new user with email and password
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, phone } = req.body;
 
@@ -35,6 +36,7 @@ const register = asyncHandler(async (req, res) => {
   });
 });
 
+//Login user with email and password
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -62,6 +64,7 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+// Update user profile (name, phone, address, bio) and optionally change password
 const updateProfile = asyncHandler(async (req, res) => {
   const { name, phone, address, bio, currentPassword, newPassword } = req.body;
 
@@ -95,6 +98,7 @@ const updateProfile = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
 });
 
+// Delete user account (requires password confirmation)
 const deleteAccount = asyncHandler(async (req, res) => {
   const { password } = req.body;
   if (!password) throw new ApiError(400, "Password is required to delete your account");
@@ -120,7 +124,7 @@ const googleLogin = asyncHandler(async (req, res) => {
   let isNewUser = false;
 
   if (!user) {
-    // Auto-register new Google users with default role
+   
     user = await User.create({
       name,
       email: email.toLowerCase(),
