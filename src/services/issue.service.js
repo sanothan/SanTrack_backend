@@ -32,7 +32,7 @@ const createIssue = async (issueData, user) => {
 
     const issue = await Issue.create(newIssueData);
 
-    // Trigger Email (Async, non-blocking)
+    // Trigger Email
     if (user && user.email) {
         sendIssueSubmittedEmail({
             to: user.email,
@@ -52,7 +52,6 @@ const updateIssueStatus = async (issueId, updateData, adminUser) => {
     const oldStatus = issue.status;
     const newStatus = updateData.status;
 
-    // Handle other updates if any
     Object.assign(issue, updateData);
 
     if (issue.status === "resolved" && !issue.resolvedAt) {
