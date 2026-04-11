@@ -6,7 +6,18 @@ const { isValidObjectId } = require("../utils/objectId");
 const { calculateInspectionStatus } = require("../services/inspection.service");
 
 const createInspection = asyncHandler(async (req, res) => {
-  const { facilityId, score, remarks, images, date } = req.body;
+  const {
+    facilityId,
+    score,
+    remarks,
+    images,
+    date,
+    cleanlinessLevel,
+    odorLevel,
+    waterAvailability,
+    suppliesStatus,
+    maintenanceRequired,
+  } = req.body;
 
   const facility = await Facility.findById(facilityId);
   if (!facility) throw new ApiError(404, "Facility not found");
@@ -20,6 +31,11 @@ const createInspection = asyncHandler(async (req, res) => {
     images: images || [],
     status,
     date: date || new Date(),
+    cleanlinessLevel,
+    odorLevel,
+    waterAvailability,
+    suppliesStatus,
+    maintenanceRequired,
   });
 
   facility.lastInspection = inspection.date;
@@ -79,6 +95,16 @@ const updateInspection = asyncHandler(async (req, res) => {
   if (req.body.remarks !== undefined) inspection.remarks = req.body.remarks;
   if (req.body.images !== undefined) inspection.images = req.body.images;
   if (req.body.date !== undefined) inspection.date = req.body.date;
+  if (req.body.cleanlinessLevel !== undefined)
+    inspection.cleanlinessLevel = req.body.cleanlinessLevel;
+  if (req.body.odorLevel !== undefined)
+    inspection.odorLevel = req.body.odorLevel;
+  if (req.body.waterAvailability !== undefined)
+    inspection.waterAvailability = req.body.waterAvailability;
+  if (req.body.suppliesStatus !== undefined)
+    inspection.suppliesStatus = req.body.suppliesStatus;
+  if (req.body.maintenanceRequired !== undefined)
+    inspection.maintenanceRequired = req.body.maintenanceRequired;
 
   await inspection.save();
 

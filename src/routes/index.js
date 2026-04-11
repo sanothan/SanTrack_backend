@@ -7,6 +7,7 @@ const inspectionRoutes = require("./inspection.routes");
 const issueRoutes = require("./issue.routes");
 const dashboardRoutes = require("./dashboard.routes");
 const uploadRoutes = require("./upload.routes");
+const scheduleRoutes = require("./schedule.routes");
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.use("/inspections", inspectionRoutes);
 router.use("/issues", issueRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/uploads", uploadRoutes);
+router.use("/schedules", scheduleRoutes);
 
 module.exports = router;
