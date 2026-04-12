@@ -10,6 +10,26 @@ const createInspectionValidation = [
   body("images.*.url").optional().isURL().withMessage("Each image must have a valid url"),
   body("images.*.publicId").optional().isString().withMessage("Each image must have a publicId"),
   body("date").optional().isISO8601().withMessage("Date must be valid"),
+  body("cleanlinessLevel")
+    .optional()
+    .isIn(["excellent", "good", "average", "poor"])
+    .withMessage("cleanlinessLevel must be one of: excellent, good, average, poor"),
+  body("odorLevel")
+    .optional()
+    .isIn(["none", "low", "moderate", "high"])
+    .withMessage("odorLevel must be one of: none, low, moderate, high"),
+  body("waterAvailability")
+    .optional()
+    .isIn(["full", "partial", "none"])
+    .withMessage("waterAvailability must be one of: full, partial, none"),
+  body("suppliesStatus")
+    .optional()
+    .isIn(["stocked", "low", "out_of_stock"])
+    .withMessage("suppliesStatus must be one of: stocked, low, out_of_stock"),
+  body("maintenanceRequired")
+    .optional()
+    .isBoolean()
+    .withMessage("maintenanceRequired must be a boolean"),
 ];
 
 const updateInspectionValidation = [
@@ -20,6 +40,11 @@ const updateInspectionValidation = [
   body("images.*.url").optional().isURL(),
   body("images.*.publicId").optional().isString(),
   body("date").optional().isISO8601(),
+  body("cleanlinessLevel").optional().isIn(["excellent", "good", "average", "poor"]),
+  body("odorLevel").optional().isIn(["none", "low", "moderate", "high"]),
+  body("waterAvailability").optional().isIn(["full", "partial", "none"]),
+  body("suppliesStatus").optional().isIn(["stocked", "low", "out_of_stock"]),
+  body("maintenanceRequired").optional().isBoolean(),
 ];
 
 module.exports = {
