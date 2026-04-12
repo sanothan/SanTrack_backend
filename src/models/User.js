@@ -45,6 +45,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    accountStatus: {
+      type: String,
+      enum: ["active", "deactivated"],
+      default: "active",
+    },
+    deactivationReason: {
+      type: String,
+      trim: true,
+    },
+    deactivatedAt: {
+      type: Date,
+    },
+    scheduledDeletionAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

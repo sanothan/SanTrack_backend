@@ -6,7 +6,7 @@ const upload = require("../middleware/upload.middleware");
 
 const router = express.Router();
 
-// Only authenticated inspector / admin users may upload images
+// Only authenticated may upload images
 router.post(
     "/image",
     verifyToken,

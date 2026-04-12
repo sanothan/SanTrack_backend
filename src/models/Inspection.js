@@ -40,6 +40,30 @@ const inspectionSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    cleanlinessLevel: {
+      type: String,
+      enum: ["excellent", "good", "average", "poor"],
+      default: "good",
+    },
+    odorLevel: {
+      type: String,
+      enum: ["none", "low", "moderate", "high"],
+      default: "none",
+    },
+    waterAvailability: {
+      type: String,
+      enum: ["full", "partial", "none"],
+      default: "full",
+    },
+    suppliesStatus: {
+      type: String,
+      enum: ["stocked", "low", "out_of_stock"],
+      default: "stocked",
+    },
+    maintenanceRequired: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
