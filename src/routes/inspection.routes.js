@@ -2,6 +2,7 @@ const express = require("express");
 const {
   createInspection,
   getInspections,
+  getInspectionSyncHistory,
   getInspectionById,
   updateInspection,
   deleteInspection,
@@ -25,10 +26,15 @@ router.post(
   validateRequest,
   createInspection
 );
-router.get("/", authorizeRoles("admin", "inspector", "community"), getInspections);
+router.get("/", authorizeRoles("admin", "inspector"), getInspections);
+router.get(
+  "/sync-history",
+  authorizeRoles("admin", "inspector"),
+  getInspectionSyncHistory
+);
 router.get(
   "/:id",
-  authorizeRoles("admin", "inspector", "community"),
+  authorizeRoles("admin", "inspector"),
   getInspectionById
 );
 router.put(
