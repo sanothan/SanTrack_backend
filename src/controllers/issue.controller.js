@@ -73,9 +73,14 @@ const deleteIssue = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!isValidObjectId(id)) throw new ApiError(400, "Invalid issue id");
 
-  const issue = await Issue.findByIdAndDelete(id);
+  const issue = await Issue.findById(id);
   if (!issue) throw new ApiError(404, "Issue not found");
 
+  if (issue.status !== "resolved") {
+    throw new ApiError(400, "Issue can only be deleted after it is resolved.");
+  }
+
+  await Issue.findByIdAndDelete(id);
   res.status(200).json({ message: "Issue deleted successfully" });
 });
 

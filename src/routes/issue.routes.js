@@ -37,7 +37,7 @@ router.get(
 router.get("/:id", authorizeRoles("admin", "inspector", "community"), getIssueById);
 router.put(
   "/:id",
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "inspector"),
   updateIssueValidation,
   validateRequest,
   updateIssue
